@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from tqdm.auto import tqdm
 
 # ===============================
 # Routing Module
@@ -140,18 +141,31 @@ def train(model, dataloader, epochs=5, lr=1e-4, device='cuda'):
     model.to(device)
 
     for epoch in range(epochs):
-        total_loss = 0
-        for x, y in dataloader:
+        total_ce = 0.0
+        total_ratio = 0.0
+        correct = 0
+        count = 0
+        progress = tqdm(dataloader, desc=f"Epoch {epoch+1}/{epochs}")
+        for x, y in progress:
             x, y = x.to(device), y.to(device)
             optimizer.zero_grad()
             with torch.cuda.amp.autocast():
                 logits, ratio_l = model(x)
-                loss = criterion(logits.view(-1, logits.size(-1)), y.view(-1)) + 0.03 * ratio_l
+                ce_loss = criterion(logits.view(-1, logits.size(-1)), y.view(-1))
+                loss = ce_loss + 0.03 * ratio_l
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
-            total_loss += loss.item()
-        print(f"Epoch {epoch+1}/{epochs} - Loss: {total_loss/len(dataloader):.4f}")
+            total_ce += ce_loss.item()
+            total_ratio += ratio_l.item()
+            preds = logits.argmax(dim=-1)
+            correct += (preds == y).float().sum().item()
+            count += y.numel()
+            progress.set_postfix({"CE": ce_loss.item(), "Ratio": ratio_l.item()})
+        avg_ce = total_ce / len(dataloader)
+        avg_ratio = total_ratio / len(dataloader)
+        acc = correct / count
+        print(f"Epoch {epoch+1}/{epochs} - CE Loss: {avg_ce:.4f} - Ratio Loss: {avg_ratio:.4f} - Acc: {acc:.4f}")
 
 # ===============================
 # Main
