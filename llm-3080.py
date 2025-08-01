@@ -162,7 +162,13 @@ if __name__ == "__main__":
 
     data = torch.randint(0, 256, (200000,), dtype=torch.long)
     dataset = ByteDataset(data)
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=16, shuffle=True)
+    dataloader = torch.utils.data.DataLoader(
+        dataset,
+        batch_size=16,
+        shuffle=True,
+        num_workers=4,
+        pin_memory=True,
+    )
 
     model = MultiStageHNet()
     train(model, dataloader)
