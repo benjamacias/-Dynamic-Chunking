@@ -122,8 +122,12 @@ class ByteDataset(torch.utils.data.Dataset):
         return len(self.data) - self.seq_len
 
     def __getitem__(self, idx):
-        x = self.data[idx:idx+self.seq_len].clone().detach()
-        y = self.data[idx+1:idx+self.seq_len+1].clone().detach()
+        x = self.data[idx:idx + self.seq_len]
+        y = self.data[idx + 1:idx + self.seq_len + 1]
+        if x.dtype != torch.long:
+            x = x.long()
+        if y.dtype != torch.long:
+            y = y.long()
         return x, y
 
 # ===============================
